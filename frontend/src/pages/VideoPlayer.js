@@ -12,6 +12,7 @@ const VideoPlayer = () => {
 
   useEffect(() => {
     fetchEpisode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [episodeId]);
 
   const fetchEpisode = async () => {

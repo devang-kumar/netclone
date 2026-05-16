@@ -28,9 +28,11 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+const clientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, '') : 'http://localhost:3000';
+
 // Standard Middlewares
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: [clientUrl, `${clientUrl}/`, 'http://localhost:3000'],
   credentials: true
 }));
 app.use(express.json({ limit: '100mb' }));

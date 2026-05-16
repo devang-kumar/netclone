@@ -1,0 +1,22 @@
+{
+  "name": "ott-platform",
+  "version": "1.0.0",
+  "description": "MERN Stack OTT Platform for Short Drama Series",
+  "main": "server.js",
+  "scripts": {
+    "start": "cd backend && node server.js",
+    "dev": "cd backend && nodemon server.js",
+    "client": "cd frontend && npm start",
+    "dev:full": "concurrently \"npm run dev\" \"npm run client\""
+  },
+  "keywords": [
+    "ott",
+    "mern",
+    "streaming"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

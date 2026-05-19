@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import AdminSidebar from '../../components/AdminSidebar';
+import { uploadToCloudinary } from '../../utils/chunkUpload';
 import './Admin.css';
 
 const AdminEpisodes = () => {
@@ -8,6 +10,7 @@ const AdminEpisodes = () => {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     seriesId: '',
     episodeNumber: 1,
@@ -43,7 +46,7 @@ const AdminEpisodes = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!videoFile) {
+    if (!editingId && !videoFile) {
       alert('Please select a video file');
       return;
     }
@@ -52,77 +55,92 @@ const AdminEpisodes = () => {
     setUploadProgress(0);
 
     try {
-      // 1. Get Signatures for Direct Upload
-      const sigRes = await axios.get('/api/admin/upload-signature?folder=ott-platform/episodes');
-      const { timestamp, signature, cloudName, apiKey } = sigRes.data;
+      let thumbnailUrl = null;
+      let videoUrl = null;
+      let videoDuration = 0;
 
-      const cloudinaryAxios = axios.create(); 
-      cloudinaryAxios.defaults.headers.common = {};
-      
-      let finalThumbnailUrl = '';
-
-      // 2. Upload Thumbnail Directly (if exists)
+      // Upload thumbnail if provided
       if (thumbnailFile) {
-        setUploadProgress(10); // Start progress
-        const thumbData = new FormData();
-        thumbData.append('file', thumbnailFile);
-        thumbData.append('api_key', apiKey);
-        thumbData.append('timestamp', timestamp);
-        thumbData.append('signature', signature);
-        thumbData.append('folder', 'ott-platform/episodes');
-
-        const thumbRes = await cloudinaryAxios.post(
-          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-          thumbData
+        setUploadProgress(10);
+        const thumbnailResult = await uploadToCloudinary(
+          thumbnailFile, 
+          'ott-platform/thumbnails',
+          (progress) => {
+            setUploadProgress(Math.round(10 + (progress * 0.2))); // 10-30%
+          }
         );
-        finalThumbnailUrl = thumbRes.data.secure_url;
+        thumbnailUrl = thumbnailResult.data.url;
       }
 
-      // 3. Upload Video Directly
-      const videoData = new FormData();
-      videoData.append('file', videoFile);
-      videoData.append('api_key', apiKey);
-      videoData.append('timestamp', timestamp);
-      videoData.append('signature', signature);
-      videoData.append('folder', 'ott-platform/episodes');
-
-      const videoRes = await cloudinaryAxios.post(
-        `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
-        videoData,
-        {
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 90) / progressEvent.total) + 10;
-            setUploadProgress(percentCompleted);
+      // Upload video if provided
+      if (videoFile) {
+        setUploadProgress(30);
+        const videoResult = await uploadToCloudinary(
+          videoFile,
+          'ott-platform/videos',
+          (progress) => {
+            setUploadProgress(Math.round(30 + (progress * 0.65))); // 30-95%
           }
-        }
-      );
+        );
+        videoUrl = videoResult.data.url;
+        videoDuration = videoResult.data.duration || 0;
+      }
 
-      const uploadedVideo = videoRes.data;
+      setUploadProgress(95);
 
-      // 4. Create Episode on our Backend (JSON request now, much faster)
-      await axios.post('/api/admin/episodes', {
+      // Create episode data
+      const episodeData = {
         seriesId: formData.seriesId,
         episodeNumber: formData.episodeNumber,
         title: formData.title,
-        description: formData.description,
-        thumbnailUrl: finalThumbnailUrl,
-        videoUrl: uploadedVideo.secure_url,
-        videoPublicId: uploadedVideo.public_id,
-        videoDuration: uploadedVideo.duration
-      });
+        description: formData.description
+      };
+
+      if (thumbnailUrl) episodeData.thumbnail = thumbnailUrl;
+      if (videoUrl) {
+        episodeData.videoUrl = videoUrl;
+        episodeData.duration = videoDuration;
+      }
+
+      // Save episode to database
+      if (editingId) {
+        await axios.put(`/api/admin/episodes/${editingId}`, episodeData);
+        alert('Episode updated successfully!');
+      } else {
+        await axios.post('/api/admin/episodes', episodeData);
+        alert('Episode created successfully!');
+      }
 
       setUploadProgress(100);
-      alert('Episode created successfully!');
       setShowForm(false);
+      setEditingId(null);
       resetForm();
       fetchEpisodes();
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Error creating episode: ' + (error.response?.data?.message || error.message));
+      alert('Error saving episode: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
       setUploadProgress(0);
     }
+  };
+
+  const handleEdit = (item) => {
+    setEditingId(item._id);
+    setFormData({
+      seriesId: item.series?._id || '',
+      episodeNumber: item.episodeNumber,
+      title: item.title,
+      description: item.description
+    });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setShowForm(false);
+    setEditingId(null);
+    resetForm();
   };
 
   const togglePublish = async (id) => {
@@ -158,16 +176,22 @@ const AdminEpisodes = () => {
 
   return (
     <div className="admin-page">
+      <AdminSidebar />
       <div className="admin-container">
         <div className="admin-header">
-          <h1>Manage Episodes</h1>
+          <div className="admin-header-left">
+            <h1>Episode Management</h1>
+            <p>Upload and organize episodes</p>
+          </div>
           <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-            {showForm ? 'Cancel' : '+ Add New Episode'}
+            {showForm ? '✕ Cancel' : '+ ADD EPISODE'}
           </button>
         </div>
 
         {showForm && (
           <form onSubmit={handleSubmit} className="admin-form">
+            <h3>{editingId ? 'Edit Episode' : 'Add New Episode'}</h3>
+            
             <div className="form-group">
               <label>Select Series *</label>
               <select
@@ -219,23 +243,24 @@ const AdminEpisodes = () => {
 
             <div className="form-row">
               <div className="form-group">
-                <label>Thumbnail Image *</label>
+                <label>Thumbnail Image {editingId ? '(Leave empty to keep current)' : '*'}</label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setThumbnailFile(e.target.files[0])}
-                  required
+                  required={!editingId}
                 />
               </div>
 
               <div className="form-group">
-                <label>Video File * (This may take a while)</label>
+                <label>Video File {editingId ? '(Leave empty to keep current video)' : '*'}</label>
                 <input
                   type="file"
                   accept="video/*"
                   onChange={(e) => setVideoFile(e.target.files[0])}
-                  required
+                  required={!editingId}
                 />
+                {editingId && <small style={{color: '#888'}}>Note: Uploading a new video may take time</small>}
               </div>
             </div>
 
@@ -247,13 +272,29 @@ const AdminEpisodes = () => {
                     style={{ width: `${uploadProgress}%` }}
                   />
                 </div>
-                <p>Uploading... {uploadProgress}%</p>
+                <p>
+                  {uploadProgress < 30
+                    ? `Uploading thumbnail... ${uploadProgress}%`
+                    : uploadProgress < 96
+                    ? `Uploading video chunks... ${uploadProgress}%`
+                    : uploadProgress < 100
+                    ? '⏳ Processing & uploading to Cloudinary... please wait'
+                    : '✅ Done!'
+                  }
+                </p>
               </div>
             )}
 
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Uploading...' : 'Create Episode'}
-            </button>
+            <div className="form-row form-actions">
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? 'Uploading...' : (editingId ? 'Update Episode' : 'Create Episode')}
+              </button>
+              {editingId && (
+                <button type="button" className="btn btn-secondary" onClick={handleCancelEdit}>
+                  Cancel Edit
+                </button>
+              )}
+            </div>
           </form>
         )}
 
@@ -261,12 +302,12 @@ const AdminEpisodes = () => {
           <table>
             <thead>
               <tr>
-                <th>Series</th>
-                <th>Episode #</th>
-                <th>Title</th>
-                <th>Views</th>
-                <th>Published</th>
-                <th>Actions</th>
+                <th>SERIES</th>
+                <th>EPISODE #</th>
+                <th>TITLE</th>
+                <th>VIEWS</th>
+                <th>PUBLISHED</th>
+                <th>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
@@ -278,21 +319,27 @@ const AdminEpisodes = () => {
                   <td>{episode.views}</td>
                   <td>
                     <span className={`status-badge ${episode.isPublished ? 'published' : 'draft'}`}>
-                      {episode.isPublished ? 'Published' : 'Draft'}
+                      {episode.isPublished ? 'PUBLISHED' : 'DRAFT'}
                     </span>
                   </td>
                   <td>
                     <button 
                       className="btn-small btn-secondary"
+                      onClick={() => handleEdit(episode)}
+                    >
+                      ✏️ EDIT
+                    </button>
+                    <button 
+                      className="btn-small btn-secondary"
                       onClick={() => togglePublish(episode._id)}
                     >
-                      {episode.isPublished ? 'Unpublish' : 'Publish'}
+                      {episode.isPublished ? 'UNPUBLISH' : 'PUBLISH'}
                     </button>
                     <button 
                       className="btn-small btn-danger"
                       onClick={() => deleteEpisode(episode._id)}
                     >
-                      Delete
+                      DELETE
                     </button>
                   </td>
                 </tr>

@@ -52,6 +52,10 @@ const seriesSchema = new mongoose.Schema({
     enum: ['top-picks', 'recommended', 'new-releases', 'upcoming'],
     default: []
   }],
+  browseCategories: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category'
+  }],
   views: {
     type: Number,
     default: 0
@@ -66,6 +70,7 @@ const seriesSchema = new mongoose.Schema({
 
 // Indexes for faster category and sorting queries
 seriesSchema.index({ categories: 1, isPublished: 1 });
+seriesSchema.index({ browseCategories: 1, isPublished: 1 });
 seriesSchema.index({ views: -1 });
 seriesSchema.index({ rating: -1 });
 seriesSchema.index({ createdAt: -1 });

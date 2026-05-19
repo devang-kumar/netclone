@@ -2,9 +2,45 @@ const express = require('express');
 const router = express.Router();
 const Series = require('../models/Series');
 const Episode = require('../models/Episode');
+const Category = require('../models/Category');
 const { protect, adminOnly } = require('../middleware/auth');
 const { upload, uploadToCloudinary, deleteFromCloudinary, generateSignature } = require('../config/cloudinary');
 const logger = require('../config/logger');
+const { flushCache } = require('../middleware/cache');
+
+/** Assign homepage categories when admin did not pick any browse row */
+async function resolveBrowseCategories(browseCategoriesJson, legacyCategoriesJson) {
+  let ids = [];
+  if (browseCategoriesJson) {
+    try {
+      ids = JSON.parse(browseCategoriesJson);
+    } catch {
+      ids = [];
+    }
+  }
+  if (ids.length > 0) return ids;
+
+  let legacy = [];
+  if (legacyCategoriesJson) {
+    try {
+      legacy = JSON.parse(legacyCategoriesJson);
+    } catch {
+      legacy = [];
+    }
+  }
+
+  const slugCandidates = new Set(['new-releases', 'top-picks']);
+  legacy.forEach((tag) => {
+    if (tag === 'upcoming') slugCandidates.add('coming-soon');
+    else slugCandidates.add(tag);
+  });
+
+  const cats = await Category.find({
+    slug: { $in: [...slugCandidates] },
+    isActive: true
+  });
+  return cats.map((c) => c._id);
+}
 
 // @route   GET /api/admin/upload-signature
 // @desc    Get signature for direct Cloudinary upload
@@ -37,7 +73,7 @@ router.post('/series', upload.fields([
   { name: 'banner', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { title, description, genre, director, releaseYear, categories, status } = req.body;
+    const { title, description, genre, director, releaseYear, categories, browseCategories, status } = req.body;
 
     // Upload images to Cloudinary
     let thumbnailUrl = '';
@@ -61,7 +97,9 @@ router.post('/series', upload.fields([
       bannerUrl = result.secure_url;
     }
 
-    const series = await Series.create({
+    const legacyCategories = categories ? JSON.parse(categories) : [];
+
+    const seriesPayload = {
       title,
       description,
       thumbnail: thumbnailUrl,
@@ -69,9 +107,13 @@ router.post('/series', upload.fields([
       genre: JSON.parse(genre),
       director,
       releaseYear,
-      categories: JSON.parse(categories),
+      categories: legacyCategories,
+      browseCategories: await resolveBrowseCategories(browseCategories, categories),
       status
-    });
+    };
+
+    const series = await Series.create(seriesPayload);
+    flushCache();
 
     res.status(201).json({
       success: true,
@@ -126,12 +168,20 @@ router.put('/series/:id', upload.fields([
     // Parse JSON fields if they exist
     if (updateData.genre) updateData.genre = JSON.parse(updateData.genre);
     if (updateData.categories) updateData.categories = JSON.parse(updateData.categories);
+    if (updateData.browseCategories !== undefined) {
+      updateData.browseCategories = await resolveBrowseCategories(
+        updateData.browseCategories,
+        updateData.categories ? JSON.stringify(updateData.categories) : JSON.stringify(series.categories)
+      );
+    }
 
     series = await Series.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true, runValidators: true }
     );
+
+    flushCache();
 
     res.json({
       success: true,
@@ -163,6 +213,7 @@ router.delete('/series/:id', async (req, res) => {
     await Episode.deleteMany({ series: req.params.id });
 
     await series.deleteOne();
+    flushCache();
 
     res.json({
       success: true,
@@ -203,9 +254,9 @@ router.post('/episodes', upload.fields([
   { name: 'video', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { seriesId, episodeNumber, title, description, videoUrl: bodyVideoUrl, videoPublicId: bodyVideoPublicId, videoDuration: bodyVideoDuration } = req.body;
+    const { seriesId, episodeNumber, title, description, videoUrl: bodyVideoUrl, thumbnail: bodyThumbnail, duration: bodyDuration } = req.body;
 
-    // Upload thumbnail if provided as file
+    // Handle thumbnail (from file upload or direct URL)
     let thumbnailUrl = '';
     if (req.files?.thumbnail) {
       const result = await uploadToCloudinary(
@@ -214,14 +265,14 @@ router.post('/episodes', upload.fields([
         'image'
       );
       thumbnailUrl = result.secure_url;
-    } else if (req.body.thumbnailUrl) {
-      thumbnailUrl = req.body.thumbnailUrl;
+    } else if (bodyThumbnail) {
+      thumbnailUrl = bodyThumbnail;
     }
 
     // Handle Video (Either from file upload or direct URL from frontend)
     let videoUrl = bodyVideoUrl || '';
-    let videoPublicId = bodyVideoPublicId || '';
-    let videoDuration = bodyVideoDuration || 0;
+    let videoPublicId = '';
+    let videoDuration = bodyDuration || 0;
 
     if (req.files?.video && !videoUrl) {
       logger.info(`Starting server-side video upload to Cloudinary for episode: ${title}`);
@@ -240,6 +291,14 @@ router.post('/episodes', upload.fields([
       return res.status(400).json({ success: false, message: 'Video is required' });
     }
 
+    // Extract publicId from URL if not provided
+    if (!videoPublicId && videoUrl) {
+      const urlParts = videoUrl.split('/');
+      const fileWithExt = urlParts[urlParts.length - 1];
+      const fileName = fileWithExt.split('.')[0];
+      videoPublicId = `${urlParts[urlParts.length - 2]}/${fileName}`;
+    }
+
     const episode = await Episode.create({
       series: seriesId,
       episodeNumber,
@@ -251,7 +310,7 @@ router.post('/episodes', upload.fields([
         publicId: videoPublicId,
         duration: videoDuration
       },
-      isPublished: true // Default to published for easier testing
+      isPublished: true
     });
 
     // Update series total episodes count
@@ -259,11 +318,14 @@ router.post('/episodes', upload.fields([
       $inc: { totalEpisodes: 1 }
     });
 
+    flushCache();
+
     res.status(201).json({
       success: true,
       data: episode
     });
   } catch (error) {
+    logger.error('Episode creation error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -290,7 +352,7 @@ router.put('/episodes/:id', upload.fields([
 
     const updateData = { ...req.body };
 
-    // Handle thumbnail upload
+    // Handle thumbnail (from file upload or direct URL)
     if (req.files?.thumbnail) {
       const result = await uploadToCloudinary(
         req.files.thumbnail[0].buffer,
@@ -298,9 +360,11 @@ router.put('/episodes/:id', upload.fields([
         'image'
       );
       updateData.thumbnail = result.secure_url;
+    } else if (req.body.thumbnail) {
+      updateData.thumbnail = req.body.thumbnail;
     }
 
-    // Handle video upload
+    // Handle video (from file upload or direct URL)
     if (req.files?.video) {
       // Delete old video from Cloudinary
       if (episode.video.publicId) {
@@ -318,6 +382,24 @@ router.put('/episodes/:id', upload.fields([
         publicId: result.public_id,
         duration: result.duration || 0
       };
+    } else if (req.body.videoUrl) {
+      // Delete old video from Cloudinary if replacing
+      if (episode.video.publicId) {
+        await deleteFromCloudinary(episode.video.publicId, 'video');
+      }
+
+      // Extract publicId from URL
+      let videoPublicId = '';
+      const urlParts = req.body.videoUrl.split('/');
+      const fileWithExt = urlParts[urlParts.length - 1];
+      const fileName = fileWithExt.split('.')[0];
+      videoPublicId = `${urlParts[urlParts.length - 2]}/${fileName}`;
+
+      updateData.video = {
+        url: req.body.videoUrl,
+        publicId: videoPublicId,
+        duration: req.body.duration || 0
+      };
     }
 
     episode = await Episode.findByIdAndUpdate(
@@ -326,11 +408,14 @@ router.put('/episodes/:id', upload.fields([
       { new: true, runValidators: true }
     );
 
+    flushCache();
+
     res.json({
       success: true,
       data: episode
     });
   } catch (error) {
+    logger.error('Episode update error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -363,6 +448,7 @@ router.delete('/episodes/:id', async (req, res) => {
     });
 
     await episode.deleteOne();
+    flushCache();
 
     res.json({
       success: true,
@@ -414,6 +500,7 @@ router.patch('/series/:id/publish', async (req, res) => {
 
     series.isPublished = !series.isPublished;
     await series.save();
+    flushCache();
 
     res.json({
       success: true,
@@ -443,6 +530,7 @@ router.patch('/episodes/:id/publish', async (req, res) => {
 
     episode.isPublished = !episode.isPublished;
     await episode.save();
+    flushCache();
 
     res.json({
       success: true,
@@ -453,6 +541,104 @@ router.patch('/episodes/:id/publish', async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+});
+
+// ——— Browse categories (admin-defined) ———
+
+const slugify = (text) =>
+  text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]+/g, '')
+    .replace(/--+/g, '-');
+
+// @route   GET /api/admin/categories
+router.get('/categories', async (req, res) => {
+  try {
+    const categories = await Category.find().sort({ displayOrder: 1, name: 1 });
+    res.json({ success: true, count: categories.length, data: categories });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   POST /api/admin/categories
+router.post('/categories', async (req, res) => {
+  try {
+    const { name, slug, description, displayOrder, isActive, showOnHome, sortBy } = req.body;
+    const categorySlug = slug || slugify(name);
+
+    const existing = await Category.findOne({ slug: categorySlug });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Category slug already exists' });
+    }
+
+    const category = await Category.create({
+      name,
+      slug: categorySlug,
+      description: description || '',
+      displayOrder: displayOrder ?? 0,
+      isActive: isActive !== false,
+      showOnHome: showOnHome !== false,
+      sortBy: sortBy || 'views'
+    });
+
+    flushCache();
+
+    res.status(201).json({ success: true, data: category });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   PUT /api/admin/categories/:id
+router.put('/categories/:id', async (req, res) => {
+  try {
+    const category = await Category.findById(req.params.id);
+    if (!category) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+
+    const { name, slug, description, displayOrder, isActive, showOnHome, sortBy } = req.body;
+
+    if (name) category.name = name;
+    if (slug) category.slug = slug;
+    else if (name) category.slug = slugify(name);
+    if (description !== undefined) category.description = description;
+    if (displayOrder !== undefined) category.displayOrder = displayOrder;
+    if (isActive !== undefined) category.isActive = isActive;
+    if (showOnHome !== undefined) category.showOnHome = showOnHome;
+    if (sortBy) category.sortBy = sortBy;
+
+    await category.save();
+    flushCache();
+    res.json({ success: true, data: category });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   DELETE /api/admin/categories/:id
+router.delete('/categories/:id', async (req, res) => {
+  try {
+    const category = await Category.findById(req.params.id);
+    if (!category) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+
+    await Series.updateMany(
+      { browseCategories: category._id },
+      { $pull: { browseCategories: category._id } }
+    );
+
+    await category.deleteOne();
+    flushCache();
+    res.json({ success: true, message: 'Category deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

@@ -1,103 +1,145 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useSearchParams } from 'react-router-dom';
+import HeroSlider from '../components/HeroSlider';
 import SeriesRow from '../components/SeriesRow';
-import { useNavigate } from 'react-router-dom';
+import CategoryBar from '../components/CategoryBar';
 import './Home.css';
 
 const Home = () => {
-  const [topPicks, setTopPicks] = useState([]);
-  const [recommended, setRecommended] = useState([]);
-  const [newReleases, setNewReleases] = useState([]);
-  const [upcoming, setUpcoming] = useState([]);
-  const [featured, setFeatured] = useState(null);
+  const [homeRows, setHomeRows] = useState([]);
+  const [browseCategories, setBrowseCategories] = useState([]);
+  const [filteredSeries, setFilteredSeries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const [filterLoading, setFilterLoading] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeSlug = searchParams.get('category') || 'all';
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
+  const loadHomeData = useCallback(async () => {
     try {
-      const [topPicksRes, recommendedRes, newReleasesRes, upcomingRes] = await Promise.all([
-        axios.get('/api/categories/top-picks'),
-        axios.get('/api/categories/recommended'),
-        axios.get('/api/categories/new-releases'),
-        axios.get('/api/categories/upcoming')
+      const [homeRes, catsRes] = await Promise.all([
+        axios.get('/api/categories/home'),
+        axios.get('/api/categories'),
       ]);
-
-      const topPicksData = topPicksRes.data?.data || [];
-      setTopPicks(topPicksData);
-      setRecommended(recommendedRes.data?.data || []);
-      setNewReleases(newReleasesRes.data?.data || []);
-      setUpcoming(upcomingRes.data?.data || []);
-
-      if (topPicksData.length > 0) {
-        setFeatured(topPicksData[Math.floor(Math.random() * topPicksData.length)]);
-      }
+      setHomeRows(homeRes.data?.data || []);
+      setBrowseCategories(catsRes.data?.data || []);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('Error fetching home data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="home loading-skeleton">
-        <div className="skeleton-hero"></div>
-        <div className="skeleton-row">
-          <div className="skeleton-title"></div>
-          <div className="skeleton-cards">
-            {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton-card"></div>)}
-          </div>
-        </div>
-        <div className="skeleton-row">
-          <div className="skeleton-title"></div>
-          <div className="skeleton-cards">
-            {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton-card"></div>)}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    loadHomeData();
+  }, [loadHomeData]);
 
-  const handlePlay = () => {
-    if (featured) {
-      navigate(`/series/${featured._id}`);
+  useEffect(() => {
+    if (activeSlug === 'all') {
+      setFilteredSeries([]);
+      return;
+    }
+
+    const fetchFiltered = async () => {
+      setFilterLoading(true);
+      try {
+        const res = await axios.get(`/api/categories/${activeSlug}/series`);
+        setFilteredSeries(res.data?.data || []);
+      } catch (error) {
+        console.error('Error filtering category:', error);
+        setFilteredSeries([]);
+      } finally {
+        setFilterLoading(false);
+      }
+    };
+
+    fetchFiltered();
+  }, [activeSlug]);
+
+  const handleCategorySelect = (slug) => {
+    if (slug === 'all') {
+      searchParams.delete('category');
+      setSearchParams(searchParams);
+    } else {
+      setSearchParams({ category: slug });
     }
   };
 
+  const getFeaturedSeries = () => {
+    if (activeSlug !== 'all') {
+      return filteredSeries.slice(0, 4);
+    }
+    for (const row of homeRows) {
+      if (row.series?.length > 0) return row.series.slice(0, 4);
+    }
+    return [];
+  };
+
+  if (loading) {
+    return <div className="loading">Loading...</div>;
+  }
+
+  const featuredSeries = getFeaturedSeries();
+  const activeCategory = browseCategories.find((c) => c.slug === activeSlug);
+
   return (
     <div className="home">
-      <div 
-        className="hero-banner"
-        style={{
-          backgroundImage: `linear-gradient(to right, rgba(0, 0, 0, 0.8) 10%, rgba(0, 0, 0, 0) 70%), url(${featured?.thumbnail || 'https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=2070&auto=format&fit=crop'})`,
-        }}
-      >
-        <div className="hero-content">
-          <h1 className="hero-title">{featured?.title || "Unlimited Short Dramas"}</h1>
-          <p className="hero-description">
-            {featured?.description?.substring(0, 150) || "Explore our collection of the most engaging short series. Watch anywhere, anytime."}
-            {featured?.description?.length > 150 ? '...' : ''}
-          </p>
-          <div className="hero-buttons">
-            <button className="hero-btn play" onClick={handlePlay}>
-              <span>▶</span> Play
-            </button>
-            <button className="hero-btn info" onClick={() => featured && navigate(`/series/${featured._id}`)}>
-              <span>ⓘ</span> More Info
-            </button>
+      {featuredSeries.length > 0 ? (
+        <HeroSlider series={featuredSeries} />
+      ) : (
+        <div className="hero-placeholder">
+          <div className="hero-placeholder-content">
+            <h1>
+              <span className="logo-stream">STREAM</span>{' '}
+              <span className="logo-vault">VAULT</span>
+            </h1>
+            <p>Add categories and series from the admin panel</p>
           </div>
         </div>
-      </div>
+      )}
+
+      {browseCategories.length > 0 && (
+        <CategoryBar
+          categories={browseCategories}
+          activeSlug={activeSlug}
+          onSelect={handleCategorySelect}
+        />
+      )}
 
       <div className="home-content">
-        <SeriesRow title="Top Picks" series={topPicks} />
-        <SeriesRow title="Recommended" series={recommended} />
-        <SeriesRow title="New Releases" series={newReleases} />
-        <SeriesRow title="Upcoming" series={upcoming} />
+        {filterLoading && <p className="home-filter-loading">Loading...</p>}
+
+        {activeSlug !== 'all' && !filterLoading && (
+          <>
+            {filteredSeries.length > 0 ? (
+              <SeriesRow
+                title={activeCategory?.name || activeSlug}
+                series={filteredSeries}
+              />
+            ) : (
+              <div className="no-content-message">
+                <h2>No series currently</h2>
+                <p>Please check back later or explore other categories.</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {activeSlug === 'all' &&
+          homeRows.map((row) => (
+            <SeriesRow
+              key={row.category._id}
+              title={row.category.name}
+              series={row.series}
+            />
+          ))}
+
+        {activeSlug === 'all' && homeRows.length === 0 && (
+          <div className="no-content-message">
+            <h2>No Content Yet</h2>
+            <p>Create categories in Admin → Categories, then assign series to them.</p>
+          </div>
+        )}
       </div>
     </div>
   );

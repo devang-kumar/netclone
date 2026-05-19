@@ -17,13 +17,35 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Increment views
     episode.views += 1;
     await episode.save();
 
+    const seriesEpisodes = await Episode.find({
+      series: episode.series._id,
+      isPublished: true
+    })
+      .sort({ episodeNumber: 1 })
+      .select('_id episodeNumber title thumbnail video.duration')
+      .lean();
+
+    const currentIndex = seriesEpisodes.findIndex(
+      (ep) => ep._id.toString() === episode._id.toString()
+    );
+
+    const prevEpisode = currentIndex > 0 ? seriesEpisodes[currentIndex - 1] : null;
+    const nextEpisode =
+      currentIndex >= 0 && currentIndex < seriesEpisodes.length - 1
+        ? seriesEpisodes[currentIndex + 1]
+        : null;
+
     res.json({
       success: true,
-      data: episode
+      data: {
+        episode,
+        seriesEpisodes,
+        prevEpisode,
+        nextEpisode
+      }
     });
   } catch (error) {
     res.status(500).json({

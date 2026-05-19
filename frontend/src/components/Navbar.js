@@ -1,24 +1,27 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import './Navbar.css';
 
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
-  const [isScrolled, setIsScrolled] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [scrolled, setScrolled] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [showBrowse, setShowBrowse] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 50) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
-    };
-
+    const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    axios.get('/api/categories')
+      .then((res) => setCategories(res.data?.data || []))
+      .catch(() => setCategories([]));
   }, []);
 
   const handleLogout = () => {
@@ -26,39 +29,76 @@ const Navbar = () => {
     navigate('/');
   };
 
-  return (
-    <nav className={`navbar ${isScrolled ? 'scrolled' : ''}`}>
-      <div className="navbar-container">
-        <Link to="/" className="navbar-logo" style={{ textDecoration: 'none' }}>
-          <h1>DRAMAFLIX</h1>
-        </Link>
+  const goCategory = (slug) => {
+    setShowBrowse(false);
+    if (slug === 'all') navigate('/');
+    else navigate(`/?category=${slug}`);
+  };
 
-        <div className="navbar-menu">
-          <Link to="/" className="navbar-link">Home</Link>
-          <Link to="/" className="navbar-link">Series</Link>
-          <Link to="/" className="navbar-link">Movies</Link>
-          <Link to="/" className="navbar-link">New & Popular</Link>
-          
-          {user && user.role === 'admin' && (
-            <Link to="/admin" className="navbar-link">Admin Panel</Link>
-          )}
+  const activeCategory = searchParams.get('category');
+
+  return (
+    <nav className={`navbar ${scrolled ? 'navbar--solid' : ''}`}>
+      <div className="navbar-container">
+        <div className="navbar-left">
+          <Link to="/" className="navbar-logo">
+            <span className="logo-stream">STREAM</span>
+            <span className="logo-vault">VAULT</span>
+          </Link>
+
+          <ul className="navbar-menu">
+            <li><Link to="/" className="navbar-link">Home</Link></li>
+            <li className="navbar-browse-wrap">
+              <button
+                type="button"
+                className="navbar-link navbar-browse-btn"
+                onClick={() => setShowBrowse(!showBrowse)}
+                aria-expanded={showBrowse}
+              >
+                Browse ▾
+              </button>
+              {showBrowse && categories.length > 0 && (
+                <ul className="navbar-browse-menu">
+                  <li>
+                    <button type="button" onClick={() => goCategory('all')}>
+                      All
+                    </button>
+                  </li>
+                  {categories.map((cat) => (
+                    <li key={cat._id}>
+                      <button
+                        type="button"
+                        className={activeCategory === cat.slug ? 'active' : ''}
+                        onClick={() => goCategory(cat.slug)}
+                      >
+                        {cat.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+            {user?.role === 'admin' && (
+              <li><Link to="/admin" className="navbar-link">Admin</Link></li>
+            )}
+          </ul>
         </div>
 
-        <div className="navbar-actions">
+        <div className="navbar-right">
           {user ? (
             <>
-              <span className="navbar-user">Welcome, {user.name}</span>
-              <button onClick={handleLogout} className="btn btn-secondary">
+              <span className="navbar-username">{user.name}</span>
+              <button type="button" onClick={handleLogout} className="btn btn-signout">
                 Sign Out
               </button>
             </>
           ) : (
             <>
-              <Link to="/login" className="btn btn-secondary">
+              <Link to="/login" className="btn btn-signin">
                 Sign In
               </Link>
-              <Link to="/register" className="btn btn-primary">
-                Join Now
+              <Link to="/register" className="btn btn-getstarted">
+                Get Started
               </Link>
             </>
           )}

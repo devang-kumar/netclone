@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import AdminSidebar from '../../components/AdminSidebar';
 import './Admin.css';
 
 const AdminSeries = () => {
   const [series, setSeries] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [editingId, setEditingId] = useState(null);
+  const [allCategories, setAllCategories] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -13,6 +18,7 @@ const AdminSeries = () => {
     director: '',
     releaseYear: new Date().getFullYear(),
     categories: [],
+    browseCategories: [],
     status: 'upcoming'
   });
   const [thumbnailFile, setThumbnailFile] = useState(null);
@@ -20,7 +26,17 @@ const AdminSeries = () => {
 
   useEffect(() => {
     fetchSeries();
+    fetchBrowseCategories();
   }, []);
+
+  const fetchBrowseCategories = async () => {
+    try {
+      const res = await axios.get('/api/admin/categories');
+      setAllCategories(res.data.data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const fetchSeries = async () => {
     try {
@@ -43,24 +59,57 @@ const AdminSeries = () => {
       data.append('director', formData.director);
       data.append('releaseYear', formData.releaseYear);
       data.append('categories', JSON.stringify(formData.categories));
+      data.append('browseCategories', JSON.stringify(formData.browseCategories));
       data.append('status', formData.status);
       
       if (thumbnailFile) data.append('thumbnail', thumbnailFile);
       if (bannerFile) data.append('banner', bannerFile);
 
-      await axios.post('/api/admin/series', data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      if (editingId) {
+        await axios.put(`/api/admin/series/${editingId}`, data, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        alert('Series updated successfully!');
+      } else {
+        await axios.post('/api/admin/series', data, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        alert('Series created successfully!');
+      }
 
-      alert('Series created successfully!');
       setShowForm(false);
+      setEditingId(null);
       resetForm();
       fetchSeries();
     } catch (error) {
-      alert('Error creating series: ' + error.response?.data?.message);
+      alert('Error saving series: ' + error.response?.data?.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = (item) => {
+    setEditingId(item._id);
+    setFormData({
+      title: item.title,
+      description: item.description,
+      genre: item.genre.join(', '),
+      director: item.director || '',
+      releaseYear: item.releaseYear,
+      categories: item.categories,
+      browseCategories: (item.browseCategories || []).map((c) =>
+        typeof c === 'object' ? c._id : c
+      ),
+      status: item.status
+    });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setShowForm(false);
+    setEditingId(null);
+    resetForm();
   };
 
   const togglePublish = async (id) => {
@@ -91,6 +140,7 @@ const AdminSeries = () => {
       director: '',
       releaseYear: new Date().getFullYear(),
       categories: [],
+      browseCategories: [],
       status: 'upcoming'
     });
     setThumbnailFile(null);
@@ -106,18 +156,61 @@ const AdminSeries = () => {
     }));
   };
 
+  const handleBrowseCategoryChange = (categoryId) => {
+    setFormData((prev) => ({
+      ...prev,
+      browseCategories: prev.browseCategories.includes(categoryId)
+        ? prev.browseCategories.filter((id) => id !== categoryId)
+        : [...prev.browseCategories, categoryId],
+    }));
+  };
+
+  const filteredSeries = series.filter(item => {
+    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'published' && item.isPublished) ||
+      (statusFilter === 'draft' && !item.isPublished);
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="admin-page">
+      <AdminSidebar />
       <div className="admin-container">
         <div className="admin-header">
-          <h1>Manage Series</h1>
+          <div className="admin-header-left">
+            <h1>Series Management</h1>
+            <p>Manage your TV series and movies</p>
+          </div>
           <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-            {showForm ? 'Cancel' : '+ Add New Series'}
+            {showForm ? '✕ Cancel' : '+ ADD SERIES'}
           </button>
         </div>
 
+        {!showForm && (
+          <div className="admin-search-bar">
+            <input
+              type="text"
+              className="admin-search-input"
+              placeholder="Search series..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <select
+              className="admin-filter-select"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">All Status</option>
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+            </select>
+          </div>
+        )}
+
         {showForm && (
           <form onSubmit={handleSubmit} className="admin-form">
+            <h3>{editingId ? 'Edit Series' : 'Add New Series'}</h3>
             <div className="form-group">
               <label>Title *</label>
               <input
@@ -184,16 +277,36 @@ const AdminSeries = () => {
             </div>
 
             <div className="form-group">
-              <label>Categories</label>
+              <label>Browse categories (homepage rows)</label>
               <div className="checkbox-group">
-                {['top-picks', 'recommended', 'new-releases', 'upcoming'].map(cat => (
+                {allCategories.length === 0 ? (
+                  <p className="admin-hint">Create categories under Admin → Categories first.</p>
+                ) : (
+                  allCategories.map((cat) => (
+                    <label key={cat._id} className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={formData.browseCategories.includes(cat._id)}
+                        onChange={() => handleBrowseCategoryChange(cat._id)}
+                      />
+                      {cat.name}
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Legacy homepage tags (optional)</label>
+              <div className="checkbox-group">
+                {['top-picks', 'recommended', 'new-releases', 'upcoming'].map((cat) => (
                   <label key={cat} className="checkbox-label">
                     <input
                       type="checkbox"
                       checked={formData.categories.includes(cat)}
                       onChange={() => handleCategoryChange(cat)}
                     />
-                    {cat.replace('-', ' ').toUpperCase()}
+                    {cat.replace('-', ' ')}
                   </label>
                 ))}
               </div>
@@ -201,12 +314,12 @@ const AdminSeries = () => {
 
             <div className="form-row">
               <div className="form-group">
-                <label>Thumbnail Image *</label>
+                <label>Thumbnail Image {!editingId && '*'}</label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setThumbnailFile(e.target.files[0])}
-                  required
+                  required={!editingId}
                 />
               </div>
 
@@ -220,53 +333,72 @@ const AdminSeries = () => {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Series'}
-            </button>
+            <div className="form-row form-actions">
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? (editingId ? 'Updating...' : 'Creating...') : (editingId ? 'Update Series' : 'Create Series')}
+              </button>
+              {editingId && (
+                <button type="button" className="btn btn-secondary" onClick={handleCancelEdit}>
+                  Cancel Edit
+                </button>
+              )}
+            </div>
           </form>
         )}
 
-        <div className="admin-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Episodes</th>
-                <th>Status</th>
-                <th>Published</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {series.map((item) => (
-                <tr key={item._id}>
-                  <td>{item.title}</td>
-                  <td>{item.totalEpisodes}</td>
-                  <td>{item.status}</td>
-                  <td>
-                    <span className={`status-badge ${item.isPublished ? 'published' : 'draft'}`}>
-                      {item.isPublished ? 'Published' : 'Draft'}
-                    </span>
-                  </td>
-                  <td>
+        {!showForm && (
+          <div className="series-grid">
+            {filteredSeries.map((item) => (
+              <div key={item._id} className="series-grid-card">
+                <img 
+                  src={item.thumbnail || 'https://via.placeholder.com/300x180?text=No+Image'} 
+                  alt={item.title} 
+                  className="series-grid-card-image"
+                />
+                <div className="series-grid-card-content">
+                  <h3 className="series-grid-card-title">{item.title}</h3>
+                  <div className="series-grid-card-meta">
+                    <span>👁 {item.views}</span>
+                    <span>📺 {item.totalEpisodes} episodes</span>
+                  </div>
+                  <div className="series-grid-card-meta">
+                    {item.genre.slice(0, 3).map((g, i) => (
+                      <span key={i} style={{
+                        background: 'rgba(255,255,255,0.1)',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px'
+                      }}>{g}</span>
+                    ))}
+                  </div>
+                  <span className={`status-badge ${item.isPublished ? 'active' : 'draft'}`}>
+                    {item.isPublished ? 'ACTIVE' : 'DRAFT'}
+                  </span>
+                  <div className="series-grid-card-actions">
+                    <button 
+                      className="btn-small btn-secondary"
+                      onClick={() => handleEdit(item)}
+                    >
+                      ✏️ Edit
+                    </button>
                     <button 
                       className="btn-small btn-secondary"
                       onClick={() => togglePublish(item._id)}
                     >
-                      {item.isPublished ? 'Unpublish' : 'Publish'}
+                      {item.isPublished ? '👁 Unpublish' : '📤 Publish'}
                     </button>
                     <button 
                       className="btn-small btn-danger"
                       onClick={() => deleteSeries(item._id)}
                     >
-                      Delete
+                      🗑
                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

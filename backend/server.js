@@ -51,6 +51,7 @@ app.use('/api/series', require('./routes/series'));
 app.use('/api/episodes', require('./routes/episodes'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/admin', require('./routes/upload'));
 
 // Health Check
 app.get('/api/health', (req, res) => {
@@ -92,3 +93,5 @@ process.on('SIGTERM', () => {
     });
   });
 });
+
+// triggered nodemon restart

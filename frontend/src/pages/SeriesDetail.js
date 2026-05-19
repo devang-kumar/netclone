@@ -14,20 +14,20 @@ const SeriesDetail = () => {
   const [inWatchlist, setInWatchlist] = useState(false);
 
   useEffect(() => {
+    const fetchSeriesDetails = async () => {
+      try {
+        const res = await axios.get(`/api/series/${id}`);
+        setSeries(res.data.data.series);
+        setEpisodes(res.data.data.episodes);
+      } catch (error) {
+        console.error('Error fetching series:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchSeriesDetails();
   }, [id]);
-
-  const fetchSeriesDetails = async () => {
-    try {
-      const res = await axios.get(`/api/series/${id}`);
-      setSeries(res.data.data.series);
-      setEpisodes(res.data.data.episodes);
-    } catch (error) {
-      console.error('Error fetching series:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleWatchlist = async () => {
     if (!user) {

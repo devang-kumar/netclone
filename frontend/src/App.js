@@ -2,11 +2,14 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Subscription from './pages/Subscription';
 import SeriesDetail from './pages/SeriesDetail';
 import VideoPlayer from './pages/VideoPlayer';
+import MyList from './pages/MyList';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminSeries from './pages/admin/AdminSeries';
 import AdminEpisodes from './pages/admin/AdminEpisodes';
@@ -29,7 +32,16 @@ const AppLayout = () => {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/subscription" element={<Subscription />} />
           <Route path="/series/:id" element={<SeriesDetail />} />
+          <Route
+            path="/my-list"
+            element={
+              <PrivateRoute>
+                <MyList />
+              </PrivateRoute>
+            }
+          />
           <Route
             path="/watch/:episodeId"
             element={
@@ -72,6 +84,7 @@ const AppLayout = () => {
           />
         </Routes>
       </main>
+      {!isAuthPage && !isPlayerPage && !isAdminPage && <Footer />}
     </div>
   );
 };

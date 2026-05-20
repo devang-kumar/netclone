@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import AdminSidebar from '../../components/AdminSidebar';
+import { cache } from '../../utils/cache';
 import './Admin.css';
 
 const emptyForm = {
@@ -45,6 +46,7 @@ const AdminCategories = () => {
       setShowForm(false);
       setEditingId(null);
       setFormData(emptyForm);
+      cache.invalidateAll();
       fetchCategories();
     } catch (error) {
       alert(error.response?.data?.message || 'Error saving category');
@@ -71,6 +73,7 @@ const AdminCategories = () => {
     if (!window.confirm('Delete this category? Series will be unlinked.')) return;
     try {
       await axios.delete(`/api/admin/categories/${id}`);
+      cache.invalidateAll();
       fetchCategories();
     } catch (error) {
       alert('Error deleting category');
@@ -89,13 +92,14 @@ const AdminCategories = () => {
           <button
             type="button"
             className="btn btn-primary"
+            style={{ width: 'auto', flexShrink: 0 }}
             onClick={() => {
               setShowForm(!showForm);
               setEditingId(null);
               setFormData(emptyForm);
             }}
           >
-            {showForm ? 'Cancel' : '+ Add Category'}
+            {showForm ? '✕ Cancel' : '+ Add Category'}
           </button>
         </div>
 
@@ -173,23 +177,21 @@ const AdminCategories = () => {
                 Show as row on homepage
               </label>
             </div>
-            <div className="form-row form-actions">
+            <div className="form-actions-row">
               <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Saving...' : editingId ? 'Update' : 'Create'}
+                {loading ? 'Saving...' : editingId ? 'Update Category' : 'Create Category'}
               </button>
-              {editingId && (
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingId(null);
-                    setFormData(emptyForm);
-                  }}
-                >
-                  Cancel Edit
-                </button>
-              )}
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingId(null);
+                  setFormData(emptyForm);
+                }}
+              >
+                Cancel
+              </button>
             </div>
           </form>
         )}
@@ -219,12 +221,14 @@ const AdminCategories = () => {
                     </span>
                   </td>
                   <td>
-                    <button type="button" className="btn-small btn-secondary" onClick={() => handleEdit(cat)}>
-                      Edit
-                    </button>
-                    <button type="button" className="btn-small btn-danger" onClick={() => handleDelete(cat._id)}>
-                      Delete
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <button type="button" className="btn-small btn-secondary" onClick={() => handleEdit(cat)}>
+                        Edit
+                      </button>
+                      <button type="button" className="btn-small btn-danger" onClick={() => handleDelete(cat._id)}>
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

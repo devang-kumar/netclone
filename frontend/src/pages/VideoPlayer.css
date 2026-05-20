@@ -6,6 +6,7 @@
   display: flex;
   flex-direction: column;
   cursor: none;
+  font-family: 'Netflix Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 .video-player-page.show-controls {
@@ -37,15 +38,44 @@
 
 .nf-btn {
   padding: 10px 24px;
-  border-radius: 4px;
-  font-weight: 600;
+  border-radius: 6px;
+  font-weight: 700;
+  font-family: 'Netflix Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   cursor: pointer;
   border: none;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+  outline: none;
+}
+
+.nf-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
 }
 
 .nf-btn--primary {
-  background: #e50914;
+  background: linear-gradient(135deg, #e50914 0%, #b8070f 100%);
   color: #fff;
+  box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3);
+}
+
+.nf-btn--primary:hover {
+  background: linear-gradient(135deg, #f40612 0%, #c8080f 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(229, 9, 20, 0.4);
+}
+
+.nf-btn:hover::before {
+  left: 100%;
 }
 
 .video-player-stage {

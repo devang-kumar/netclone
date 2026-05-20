@@ -1,33 +1,57 @@
 .logo {
-  display: flex;
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
   text-decoration: none;
-  color: var(--netflix-red);
-  flex-shrink: 0;
-}
-
-.logo-icon {
-  width: 28px;
-  height: 28px;
-}
-
-.logo-text {
-  font-size: 1.6rem;
   font-weight: 900;
-  letter-spacing: 0.5px;
-  color: var(--netflix-red);
+  font-size: 1.6rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
-.logo--large .logo-icon {
-  width: 45px;
-  height: 45px;
+.logo-stream {
+  color: #e50914;
 }
 
-.logo--large .logo-text {
-  font-size: 2.2rem;
+.logo-vault {
+  color: #ffffff;
 }
 
-.logo--white {
-  color: var(--netflix-red);
+.logo--large {
+  font-size: 2.25rem;
+  letter-spacing: 1.5px;
+}
+
+.logo--large::before {
+  content: '';
+  position: absolute;
+  left: -12%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 58%;
+  height: 180%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(229, 9, 20, 0.4) 0%,
+    rgba(229, 9, 20, 0.12) 45%,
+    transparent 72%
+  );
+  z-index: -1;
+  pointer-events: none;
+}
+
+.logo--large .logo-stream {
+  text-shadow:
+    0 0 20px rgba(229, 9, 20, 0.75),
+    0 0 40px rgba(229, 9, 20, 0.35);
+}
+
+.logo--large .logo-vault {
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.15);
+}
+
+.logo:hover {
+  opacity: 0.92;
 }

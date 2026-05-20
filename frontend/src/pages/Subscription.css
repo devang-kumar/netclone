@@ -1,0 +1,351 @@
+/* Subscription Page Styles */
+.subscription-page {
+  background: #000000;
+  min-height: 100vh;
+  color: #ffffff;
+  font-family: 'Netflix Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.subscription-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 120px 20px 60px;
+}
+
+.subscription-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.choose-plan-text {
+  color: #e50914;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+}
+
+.unlock-title {
+  font-size: 48px;
+  font-weight: 900;
+  margin-bottom: 20px;
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.unlock-subtitle {
+  font-size: 18px;
+  color: #999999;
+  margin-bottom: 40px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+}
+
+/* Billing Toggle */
+.billing-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.billing-toggle span {
+  font-size: 16px;
+  font-weight: 500;
+  color: #999999;
+  transition: color 0.3s ease;
+}
+
+.billing-toggle span.active {
+  color: #ffffff;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 50px;
+  height: 24px;
+  background: #333333;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #e50914;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.toggle-slider.yearly {
+  transform: translateX(26px);
+}
+
+.save-badge {
+  background: #e50914;
+  color: #ffffff;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 10px;
+}
+
+/* Plans Container */
+.plans-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+  margin-bottom: 60px;
+}
+
+.plan-card {
+  background: linear-gradient(145deg, #1a1a1a 0%, #0f0f0f 100%);
+  border: 2px solid #333333;
+  border-radius: 16px;
+  padding: 40px 30px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.plan-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(229, 9, 20, 0.1) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.plan-card:hover::before,
+.plan-card.selected::before {
+  opacity: 1;
+}
+
+.plan-card:hover,
+.plan-card.selected {
+  border-color: #e50914;
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(229, 9, 20, 0.2);
+}
+
+.plan-card.popular {
+  border-color: #e50914;
+  position: relative;
+}
+
+.popular-badge {
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #e50914;
+  color: #ffffff;
+  padding: 8px 20px;
+  border-radius: 0 0 12px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.plan-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.plan-name {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 15px;
+  color: #ffffff;
+}
+
+.plan-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+}
+
+.currency {
+  font-size: 20px;
+  font-weight: 600;
+  color: #e50914;
+}
+
+.amount {
+  font-size: 48px;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.period {
+  font-size: 16px;
+  color: #999999;
+  font-weight: 500;
+}
+
+/* Plan Features */
+.plan-features {
+  margin-bottom: 40px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 0;
+}
+
+.feature-check {
+  color: #e50914;
+  font-weight: 700;
+  font-size: 14px;
+  width: 16px;
+  text-align: center;
+}
+
+.feature-text {
+  color: #cccccc;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Plan Button */
+.plan-button {
+  width: 100%;
+  padding: 16px 24px;
+  background: transparent;
+  border: 2px solid #333333;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.plan-button:hover {
+  border-color: #e50914;
+  background: rgba(229, 9, 20, 0.1);
+}
+
+.plan-button.selected {
+  background: #e50914;
+  border-color: #e50914;
+  color: #ffffff;
+}
+
+/* Subscription Footer */
+.subscription-footer {
+  text-align: center;
+}
+
+.subscribe-now-btn {
+  background: linear-gradient(135deg, #e50914 0%, #b8070f 100%);
+  color: #ffffff;
+  border: none;
+  padding: 18px 60px;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'Netflix Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+  outline: none;
+  box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3);
+}
+
+.subscribe-now-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.subscribe-now-btn:hover {
+  background: linear-gradient(135deg, #f40612 0%, #c8080f 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(229, 9, 20, 0.4);
+}
+
+.subscribe-now-btn:hover::before {
+  left: 100%;
+}
+
+.terms-text {
+  color: #666666;
+  font-size: 14px;
+  max-width: 500px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .subscription-container {
+    padding: 100px 15px 40px;
+  }
+  
+  .unlock-title {
+    font-size: 36px;
+  }
+  
+  .plans-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .plan-card {
+    padding: 30px 20px;
+  }
+  
+  .amount {
+    font-size: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  .unlock-title {
+    font-size: 28px;
+  }
+  
+  .unlock-subtitle {
+    font-size: 16px;
+  }
+  
+  .billing-toggle {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}

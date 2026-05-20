@@ -9,41 +9,42 @@
   right: 0;
   height: var(--netflix-nav-height);
   z-index: 1000;
-  transition: background-color 0.3s ease;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, transparent 100%);
+  transition: background-color 0.4s ease;
+  background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, transparent 100%);
+  font-family: 'Netflix Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 .navbar--solid {
-  background-color: #000;
+  background-color: #141414;
 }
 
 .navbar-container {
   height: 100%;
-  max-width: 100%;
   padding: 0 4%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 24px;
 }
 
+/* ── LEFT: logo + nav links ── */
 .navbar-left {
   display: flex;
   align-items: center;
-  gap: 32px;
-  flex: 1;
-  min-width: 0;
+  gap: 28px;
+  flex-shrink: 0;
 }
 
 .navbar-logo {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: 900;
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 2px;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   flex-shrink: 0;
+  color: #e50914;
+  text-transform: uppercase;
 }
 
 .logo-stream {
@@ -54,10 +55,11 @@
   color: #fff;
 }
 
+/* Inline nav links — like Netflix */
 .navbar-menu {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 4px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -67,115 +69,364 @@
   color: #e5e5e5;
   text-decoration: none;
   font-size: 14px;
-  font-weight: 500;
-  transition: color 0.2s;
+  font-weight: 400;
+  transition: color 0.2s ease;
   white-space: nowrap;
-}
-
-.navbar-link:hover {
-  color: #b3b3b3;
-}
-
-.navbar-browse-wrap {
-  position: relative;
-}
-
-.navbar-browse-btn {
+  padding: 6px 10px;
+  border-radius: 3px;
   background: transparent;
   border: none;
   cursor: pointer;
   font-family: inherit;
-  padding: 0;
 }
 
-.navbar-browse-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 8px;
-  min-width: 180px;
-  max-height: 320px;
-  overflow-y: auto;
-  background: rgba(20, 20, 20, 0.98);
-  border: 1px solid #333;
-  border-radius: 4px;
-  list-style: none;
-  padding: 8px 0;
-  z-index: 1100;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+.navbar-link:hover,
+.navbar-link.active {
+  color: #ffffff;
 }
 
-.navbar-browse-menu button {
-  display: block;
-  width: 100%;
-  padding: 10px 16px;
+/* Categories dropdown trigger */
+.navbar-dropdown {
+  position: relative;
+}
+
+.dropdown-btn {
   background: transparent;
   border: none;
-  color: #e5e5e5;
-  text-align: left;
-  font-size: 14px;
   cursor: pointer;
-}
-
-.navbar-browse-menu button:hover,
-.navbar-browse-menu button.active {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-.navbar-right {
+  font-family: inherit;
+  color: #e5e5e5;
+  font-size: 14px;
+  font-weight: 400;
+  padding: 6px 10px;
+  border-radius: 3px;
+  transition: color 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex-shrink: 0;
+  gap: 4px;
 }
 
-.navbar-search-btn {
+.dropdown-btn:hover {
+  color: #fff;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  min-width: 200px;
+  max-height: 380px;
+  overflow-y: auto;
+  background: rgba(20, 20, 20, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 2px solid #e50914;
+  list-style: none;
+  padding: 6px 0;
+  z-index: 1100;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  animation: dropdownFadeIn 0.18s ease-out;
+}
+
+/* Categories grid */
+.categories-menu {
+  min-width: 300px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: 0;
+  background: rgba(20, 20, 20, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 2px solid #e50914;
+}
+
+.categories-menu li {
+  margin: 0;
+}
+
+.categories-menu li:nth-child(odd) {
+  border-right: none;
+}
+
+.categories-menu button {
+  display: block;
+  width: 100%;
+  padding: 14px 18px;
   background: transparent;
   border: none;
-  color: #fff;
-  font-size: 18px;
+  color: #b3b3b3;
+  font-size: 14px;
+  font-weight: 400;
   cursor: pointer;
-  padding: 8px;
-  line-height: 1;
+  transition: color 0.2s ease, background 0.2s ease;
+  text-align: left;
+  font-family: inherit;
+  letter-spacing: 0.1px;
 }
 
-.navbar-search-btn:hover {
+.categories-menu button:hover {
+  color: #e50914;
+  background: rgba(229, 9, 20, 0.06);
+}
+
+.categories-menu button.active {
+  color: #ffffff;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-menu li { margin: 0; }
+
+.dropdown-menu button,
+.dropdown-menu a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 18px;
+  background: transparent;
+  border: none;
+  color: #b3b3b3;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.dropdown-menu li:last-child button,
+.dropdown-menu li:last-child a {
+  border-bottom: none;
+}
+
+.dropdown-menu button:hover,
+.dropdown-menu a:hover {
+  background: rgba(229, 9, 20, 0.06);
+  color: #e50914;
+}
+
+.menu-icon {
+  font-size: 15px;
+  width: 18px;
+  text-align: center;
   opacity: 0.7;
 }
 
-.navbar-username {
-  color: #e5e5e5;
-  font-size: 14px;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.menu-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+  margin: 6px 0;
+}
+
+/* ── RIGHT: search + profile ── */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.navbar-user-section {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+/* Search icon button */
+.navbar-search-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease;
+}
+
+.navbar-search-btn:hover {
+  opacity: 0.75;
+}
+
+.navbar-search-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: #fff;
+}
+
+/* Subscribe button — golden premium */
+.subscribe-btn {
+  position: relative;
+  padding: 7px 18px;
+  background: linear-gradient(135deg, #f5c518 0%, #e6b800 50%, #d4a017 100%);
+  color: #000;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 800;
+  border-radius: 4px;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  border: none;
   white-space: nowrap;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(245, 197, 24, 0.35);
+}
+
+.subscribe-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  transition: left 0.5s ease;
+}
+
+.subscribe-btn:hover::before {
+  left: 100%;
+}
+
+.subscribe-btn:hover {
+  background: linear-gradient(135deg, #e6b800 0%, #d4a017 50%, #b8890f 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 18px rgba(245, 197, 24, 0.55);
+  color: #000;
+}
+
+/* Profile button — Netflix style: just avatar + caret */
+.profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  color: #e5e5e5;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: opacity 0.2s ease;
+}
+
+.profile-btn:hover {
+  opacity: 0.85;
+}
+
+/* Square avatar — Netflix style */
+.profile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: #e50914;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  color: #ffffff;
+  flex-shrink: 0;
+  letter-spacing: 0;
+}
+
+/* Hide name — Netflix only shows avatar */
+.profile-name {
+  display: none;
+}
+
+.dropdown-arrow {
+  font-size: 9px;
+  transition: transform 0.25s ease;
+  color: #fff;
+  line-height: 1;
+}
+
+.profile-btn[aria-expanded="true"] .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+/* Profile dropdown — right-aligned, Netflix dark style */
+.profile-menu {
+  right: 0;
+  left: auto;
+  min-width: 220px;
+  border-top: 2px solid #e50914;
+}
+
+/* Caret pointer above dropdown */
+.profile-menu::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  right: 14px;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 8px solid #e50914;
+}
+
+.logout-btn {
+  color: #e5e5e5 !important;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.logout-btn:hover {
+  color: #fff !important;
+  background: rgba(255,255,255,0.07) !important;
+}
+
+/* Admin panel link — subtle red accent */
+.admin-panel-link {
+  color: #e5e5e5 !important;
+}
+
+.admin-panel-link:hover {
+  color: #e50914 !important;
+  background: rgba(229, 9, 20, 0.06) !important;
+}
+
+/* Auth buttons (logged out) */
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .btn {
   padding: 8px 18px;
   border: none;
-  border-radius: 4px;
+  border-radius: 3px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s ease, opacity 0.2s ease;
+  transition: all 0.2s ease;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+  font-family: inherit;
 }
 
 .btn-signin {
   background: transparent;
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255,255,255,0.4);
 }
 
 .btn-signin:hover {
   border-color: #fff;
+  background: rgba(255,255,255,0.08);
 }
 
 .btn-getstarted {
@@ -184,42 +435,48 @@
 }
 
 .btn-getstarted:hover {
-  background: #f40612;
+  background: #c1070f;
 }
 
-.btn-signout {
-  background: transparent;
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-}
-
-.btn-signout:hover {
-  border-color: #fff;
-}
-
-@media (max-width: 768px) {
-  .navbar-logo {
-    font-size: 1.25rem;
-  }
-
+/* ── Responsive ── */
+@media (max-width: 900px) {
   .navbar-menu {
-    display: none;
-  }
-
-  .navbar-username {
     display: none;
   }
 
   .navbar-left {
     gap: 16px;
   }
+}
 
-  .navbar-right {
-    gap: 10px;
+@media (max-width: 768px) {
+  .navbar-logo {
+    font-size: 1.3rem;
   }
 
-  .btn {
-    padding: 7px 14px;
-    font-size: 13px;
+  .profile-name {
+    display: none;
+  }
+
+  .navbar-right {
+    gap: 12px;
+  }
+
+  .navbar-user-section {
+    gap: 12px;
+  }
+
+  .subscribe-btn {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-container {
+    padding: 0 3%;
+  }
+
+  .navbar-logo {
+    font-size: 1.1rem;
   }
 }

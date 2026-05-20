@@ -12,6 +12,7 @@ const SeriesDetail = () => {
   const [episodes, setEpisodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [inWatchlist, setInWatchlist] = useState(false);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
 
   useEffect(() => {
     const fetchSeriesDetails = async () => {
@@ -19,6 +20,17 @@ const SeriesDetail = () => {
         const res = await axios.get(`/api/series/${id}`);
         setSeries(res.data.data.series);
         setEpisodes(res.data.data.episodes);
+        
+        // Check if series is in user's watchlist
+        if (user) {
+          try {
+            const watchlistRes = await axios.get('/api/users/watchlist');
+            const isInWatchlist = watchlistRes.data.data.some(item => item._id === id);
+            setInWatchlist(isInWatchlist);
+          } catch (error) {
+            console.error('Error checking watchlist:', error);
+          }
+        }
       } catch (error) {
         console.error('Error fetching series:', error);
       } finally {
@@ -27,7 +39,7 @@ const SeriesDetail = () => {
     };
 
     fetchSeriesDetails();
-  }, [id]);
+  }, [id, user]);
 
   const handleWatchlist = async () => {
     if (!user) {
@@ -35,6 +47,7 @@ const SeriesDetail = () => {
       return;
     }
 
+    setWatchlistLoading(true);
     try {
       if (inWatchlist) {
         await axios.delete(`/api/users/watchlist/${id}`);
@@ -45,6 +58,10 @@ const SeriesDetail = () => {
       }
     } catch (error) {
       console.error('Error updating watchlist:', error);
+      // Show error message to user
+      alert(error.response?.data?.message || 'Error updating watchlist');
+    } finally {
+      setWatchlistLoading(false);
     }
   };
 
@@ -66,27 +83,18 @@ const SeriesDetail = () => {
 
   return (
     <div className="series-detail">
-      {/* Back Button */}
-      <button className="back-button" onClick={() => navigate('/')}>
-        ← Back
-      </button>
-
       {/* Hero Section */}
-      <div 
-        className="series-hero" 
-        style={{ backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.9) 40%, transparent), 
-                                   linear-gradient(to top, rgba(0,0,0,0.95), transparent),
-                                   url(${series.banner || series.thumbnail})` }}
-      >
+      <div className="series-hero">
+        <div className="series-hero-overlay" aria-hidden="true" />
+        <button className="back-button" onClick={() => navigate('/')}>
+          ← Back
+        </button>
         <div className="series-hero-content">
           <h1 className="series-hero-title">{series.title}</h1>
           
           <div className="series-hero-meta">
-            <span className="series-rating">
-              <span>⭐</span> {series.rating || '8.3'}
-            </span>
-            <span className="series-year">📅 {series.releaseYear}</span>
-            <span className="series-seasons">📺 {series.totalEpisodes} Episodes</span>
+            <span className="series-year">{series.releaseYear}</span>
+            <span className="series-seasons">{series.totalEpisodes} Episodes</span>
             {(series.genre || []).slice(0, 2).map((g, i) => (
               <span key={i} className="series-genre-badge">{g}</span>
             ))}
@@ -100,14 +108,18 @@ const SeriesDetail = () => {
                 className="btn-watch"
                 onClick={() => handlePlayEpisode(episodes[0]._id)}
               >
-                <span>▶</span> Watch Now
+                <span className="play-icon">▶</span> Watch Now
               </button>
             )}
             <button 
-              className="btn-list"
+              className={`btn-list ${inWatchlist ? 'in-watchlist' : ''}`}
               onClick={handleWatchlist}
+              disabled={watchlistLoading}
             >
-              <span>+</span> My List
+              <span className="list-icon">
+                {watchlistLoading ? '...' : inWatchlist ? '✓' : '+'}
+              </span> 
+              {inWatchlist ? 'In My List' : 'My List'}
             </button>
           </div>
         </div>

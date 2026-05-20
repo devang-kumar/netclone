@@ -91,6 +91,9 @@
   color: #b3b3b3;
   text-decoration: none;
   transition: all 0.3s ease;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
 }
 
 .social-link:hover {
